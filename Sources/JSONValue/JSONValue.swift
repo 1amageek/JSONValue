@@ -26,12 +26,10 @@ public enum JSONValue: Codable, Sendable, Equatable {
             self = .boolean(value)
         } else if let value = try? container.decode(Int.self) {
             self = .integer(value)
+        } else if let value = try? container.decode(Float.self) {
+            self = .float(value)
         } else if let value = try? container.decode(Double.self) {
-            if value <= Double(Float.greatestFiniteMagnitude) && value >= Double(-Float.greatestFiniteMagnitude) {
-                self = .float(Float(value))
-            } else {
-                self = .double(value)
-            }
+            self = .double(value)
         } else if let value = try? container.decode([JSONValue].self) {
             self = .array(value)
         } else if let value = try? container.decode([String: JSONValue].self) {

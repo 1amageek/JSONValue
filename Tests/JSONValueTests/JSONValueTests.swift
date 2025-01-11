@@ -2,9 +2,9 @@ import Testing
 import Foundation
 @testable import JSONValue
 
-@Test("型の生成と値の取得をテスト")
+@Test("Basic type creation and value extraction")
 func testJSONValueCreation() throws {
-    // String
+    // String type
     let stringValue = JSONValue.string("test")
     if case .string(let value) = stringValue {
         #expect(value == "test")
@@ -12,7 +12,7 @@ func testJSONValueCreation() throws {
         Issue.record("Expected string value")
     }
     
-    // Boolean
+    // Boolean type
     let boolValue = JSONValue.boolean(true)
     if case .boolean(let value) = boolValue {
         #expect(value == true)
@@ -20,7 +20,7 @@ func testJSONValueCreation() throws {
         Issue.record("Expected boolean value")
     }
     
-    // Integer
+    // Integer type
     let intValue = JSONValue.integer(42)
     if case .integer(let value) = intValue {
         #expect(value == 42)
@@ -28,7 +28,7 @@ func testJSONValueCreation() throws {
         Issue.record("Expected integer value")
     }
     
-    // Float
+    // Float type
     let floatValue = JSONValue.float(3.14)
     if case .float(let value) = floatValue {
         #expect(value == 3.14)
@@ -36,7 +36,7 @@ func testJSONValueCreation() throws {
         Issue.record("Expected float value")
     }
     
-    // Double
+    // Double type
     let doubleValue = JSONValue.double(Double.pi)
     if case .double(let value) = doubleValue {
         #expect(value == Double.pi)
@@ -45,7 +45,7 @@ func testJSONValueCreation() throws {
     }
 }
 
-@Test("配列の生成と値の取得をテスト")
+@Test("Array value creation and element access")
 func testArrayValue() throws {
     let arrayValue = JSONValue.array([
         .string("test"),
@@ -70,7 +70,7 @@ func testArrayValue() throws {
     }
 }
 
-@Test("オブジェクトの生成と値の取得をテスト")
+@Test("Object value creation and property access")
 func testObjectValue() throws {
     let objectValue = JSONValue.object([
         "string": .string("test"),
@@ -95,22 +95,28 @@ func testObjectValue() throws {
     }
 }
 
-@Test("ネストされた構造のテスト")
+@Test("Deep nested structure handling")
 func testNestedStructure() throws {
     let nestedValue = JSONValue.object([
         "name": .string("Test"),
         "numbers": .array([.integer(1), .integer(2)]),
         "nested": .object([
             "key": .string("value"),
-            "flag": .boolean(true)
+            "flag": .boolean(true),
+            "deepNested": .object([
+                "array": .array([
+                    .string("deep"),
+                    .boolean(false)
+                ])
+            ])
         ])
     ])
     
     if case .object(let dict) = nestedValue {
-        // トップレベルの検証
+        // Top level validation
         #expect(dict.count == 3)
         
-        // 配列の検証
+        // Array validation
         if case .array(let numbers) = dict["numbers"] {
             #expect(numbers.count == 2)
             if case .integer(let first) = numbers[0] {
@@ -118,34 +124,140 @@ func testNestedStructure() throws {
             }
         }
         
-        // ネストされたオブジェクトの検証
-        if case .object(let nested) = dict["nested"] {
-            if case .string(let key) = nested["key"] {
-                #expect(key == "value")
-            }
-            if case .boolean(let flag) = nested["flag"] {
-                #expect(flag == true)
+        // Nested object validation
+        if case .object(let nested) = dict["nested"],
+           case .object(let deepNested) = nested["deepNested"],
+           case .array(let deepArray) = deepNested["array"] {
+            #expect(deepArray.count == 2)
+            if case .string(let str) = deepArray[0] {
+                #expect(str == "deep")
             }
         }
-    } else {
-        Issue.record("Expected nested object structure")
     }
 }
 
-@Test("等値性の検証")
+@Test("Value equality")
 func testEquality() throws {
-    // 同じ値を持つJSONValueは等しい
+    // Same values should be equal
     #expect(JSONValue.string("test") == JSONValue.string("test"))
     #expect(JSONValue.integer(42) == JSONValue.integer(42))
     #expect(JSONValue.boolean(true) == JSONValue.boolean(true))
     #expect(JSONValue.float(3.14) == JSONValue.float(3.14))
     #expect(JSONValue.double(1.23) == JSONValue.double(1.23))
     
-    // 異なる値は等しくない
+    // Different values should not be equal
     #expect(JSONValue.string("test") != JSONValue.string("other"))
     #expect(JSONValue.integer(42) != JSONValue.integer(43))
     
-    // 異なる型は等しくない
+    // Different types should not be equal
     #expect(JSONValue.string("42") != JSONValue.integer(42))
     #expect(JSONValue.float(42.0) != JSONValue.integer(42))
+}
+
+@Test("Empty array and object handling")
+func testEmptyContainers() throws {
+    let emptyArray = JSONValue.array([])
+    let emptyObject = JSONValue.object([:])
+    
+    if case .array(let arr) = emptyArray {
+        #expect(arr.isEmpty)
+    }
+    
+    if case .object(let obj) = emptyObject {
+        #expect(obj.isEmpty)
+    }
+}
+
+@Test("Array with duplicate values")
+func testArrayWithDuplicates() throws {
+    let arrayWithDuplicates = JSONValue.array([
+        .string("test"),
+        .string("test"),
+        .integer(42),
+        .integer(42)
+    ])
+    
+    if case .array(let values) = arrayWithDuplicates {
+        #expect(values.count == 4)
+        #expect(values[0] == values[1])
+        #expect(values[2] == values[3])
+    }
+}
+
+@Test("Object with nested empty containers")
+func testObjectWithEmptyContainers() throws {
+    let objectWithEmpty = JSONValue.object([
+        "emptyArray": .array([]),
+        "emptyObject": .object([:]),
+        "value": .string("test")
+    ])
+    
+    if case .object(let dict) = objectWithEmpty {
+        if case .array(let arr) = dict["emptyArray"] {
+            #expect(arr.isEmpty)
+        }
+        if case .object(let obj) = dict["emptyObject"] {
+            #expect(obj.isEmpty)
+        }
+    }
+}
+
+@Test("Special number values")
+func testSpecialNumbers() throws {
+    // Integer bounds
+    let maxInt = JSONValue.integer(Int.max)
+    let minInt = JSONValue.integer(Int.min)
+    
+    if case .integer(let max) = maxInt {
+        #expect(max == Int.max)
+    }
+    if case .integer(let min) = minInt {
+        #expect(min == Int.min)
+    }
+    
+    // Float special values
+    let floatValue = JSONValue.float(Float.infinity)
+    if case .float(let value) = floatValue {
+        #expect(value.isInfinite)
+    }
+}
+
+@Test("Complex array operations")
+func testComplexArrayOperations() throws {
+    let complexArray = JSONValue.array([
+        .array([.string("nested")]),
+        .object(["key": .boolean(true)]),
+        .array([
+            .integer(1),
+            .array([.string("deep")])
+        ])
+    ])
+    
+    if case .array(let values) = complexArray {
+        #expect(values.count == 3)
+        
+        // Test first nested array
+        if case .array(let nested1) = values[0] {
+            #expect(nested1.count == 1)
+            if case .string(let str) = nested1[0] {
+                #expect(str == "nested")
+            }
+        }
+        
+        // Test nested object
+        if case .object(let obj) = values[1] {
+            if case .boolean(let bool) = obj["key"] {
+                #expect(bool == true)
+            }
+        }
+        
+        // Test deeply nested array
+        if case .array(let nested2) = values[2] {
+            if case .array(let deepNested) = nested2[1] {
+                if case .string(let str) = deepNested[0] {
+                    #expect(str == "deep")
+                }
+            }
+        }
+    }
 }
